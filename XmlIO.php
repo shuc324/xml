@@ -4,13 +4,44 @@ namespace Shuc324\Xml;
 
 class XmlIO
 {
+    const ZERO = 0;
+
+    const START = 1;
+
+    const TABLE = "\t";
+
+    const ENTER = "\r\n";
+
+    const EQUAL_STR = "=";
+
+    const EMPTY_STR = '';
+
+    const SPACE_STR = ' ';
+
+    const ENCODING = 'utf-8';
+
+    const TYPE_ARRAY = 'array';
+
+    const TYPE_STRING = 'string';
+
+    const TYPE_OBJECT = 'object';
+
+    const END_LEFT_LABEL = '</';
+
+    const END_RIGHT_LABEL = '>';
+
+    const START_LEFT_LABEL = '<';
+
+    const START_RIGHT_LABEL = '>';
+
     #>>读取XML文件<<#
     # @access public
     # @param $originXml XML文件路径 OR XML字符串
     # @return array
     public function read($originXml)
     {
-        return $this->objectToArray(is_file($originXml) ? call_user_func_array('simplexml_load_file', array($originXml, 'SimpleXMLElement', LIBXML_NOCDATA)) : call_user_func_array('simplexml_load_string', array($originXml, 'SimpleXMLElement', LIBXML_NOCDATA)));
+        $simpleXmlObject = is_file($originXml) ? call_user_func_array('simplexml_load_file', [$originXml, 'SimpleXMLElement', LIBXML_NOCDATA]) : call_user_func_array('simplexml_load_string', [$originXml, 'SimpleXMLElement', LIBXML_NOCDATA]);
+        return [$simpleXmlObject->getName() => [self::ZERO => $this->objectToArray($simpleXmlObject)]];
     }
 
     # 对象转化为数组 #
@@ -21,7 +52,7 @@ class XmlIO
     {
         $mixed = (array)$object;
         foreach ($mixed as $name => $value) {
-            $mixed[$name] = in_array(gettype($value), array('object', 'array')) ? (array)$this->objectToArray($value) : $value;
+            $mixed[$name] = in_array(gettype($value), [self::TYPE_OBJECT, self::TYPE_ARRAY]) ? (array)$this->objectToArray($value) : $value;
         }
         return $mixed;
     }
@@ -33,10 +64,10 @@ class XmlIO
     # @param $topTag 顶级标签
     # @param $encoding 编码
     # @return null
-    public function write($savePath, $array = array(), $topTag = 'datas', $encoding = 'utf-8')
+    public function write($savePath, $array = array(), $topTag = self::EMPTY_STR, $encoding = self::ENCODING)
     {
         $handle = fopen($savePath, 'w+');
-        $xmlContent = '<?xml version="1.0" encoding="' . $encoding . '"?>' . "\r\n" . $this->nodeContent($array, $topTag);
+        $xmlContent = '<?xml version="1.0" encoding="' . $encoding . '"?>' . self::ENTER . $this->nodeContent($array, $topTag);
         fwrite($handle, $xmlContent);
         fclose($handle);
     }
@@ -47,27 +78,28 @@ class XmlIO
     # @param $topTag 顶级标签
     # @param $level 层级
     # @return string
-    private function nodeContent($array, $topTag, $level = 0)
+    private function nodeContent($array, $topTag, $level = self::ZERO)
     {
-        $xmlNodeContent = ''; $enter = "\r\n"; $table = "\t"; $attributeStr = '';
-        $tables = $level > 0 ? implode('', array_fill(0, $level, $table)) : '';
+        $xmlNodeContent = self::EMPTY_STR; $enter = self::ENTER; $table = self::TABLE; $attributeStr = self::EMPTY_STR;
+        $tables = $level > 0 ? implode(self::EMPTY_STR, array_fill(self::ZERO, $level, $table)) : self::EMPTY_STR;
         if (array_key_exists('@attributes', $array)) {
             foreach ($array['@attributes'] as $name => $value) {
-                $attributeStr .= $name . '="' . $value . '" ';
+                $attributeStr .= $name . self::EQUAL_STR . '"' . $value . '"' . self::SPACE_STR;
             }
-            $attributeStr = ' ' . rtrim($attributeStr);
+            $attributeStr = self::SPACE_STR . rtrim($attributeStr);
             unset($array['@attributes']);
         }
         ++$level;
         foreach ($array as $tag => $value) {
-            if (gettype($value) == 'array') {
+            if (gettype($value) == self::TYPE_ARRAY) {
+                $level == self::START && empty($topTag) && --$level;
                 foreach ($value as $childTag => $childValue) {
-                    $xmlNodeContent .= in_array('string', array(gettype($childTag), gettype($childValue))) ? (gettype($childValue) == 'string' && gettype($childTag) != 'string') ? $tables . $table . '<' . $tag . '>' . $childValue . '</' . $tag . '>' . $enter : $this->nodeContent($value, $tag, $level) : $this->nodeContent($childValue, $tag, $level);
+                    $xmlNodeContent .= in_array(self::TYPE_STRING, array(gettype($childTag), gettype($childValue))) ? $this->nodeContent($value, $tag, $level) : $this->nodeContent($childValue, $tag, $level);
                 }
             } else {
-                $xmlNodeContent .= $tables . $table . '<' . $tag . '>' . $value . '</' . $tag . '>' . $enter;
+                $xmlNodeContent .= $tables . $table . self::START_LEFT_LABEL . $tag . self::START_RIGHT_LABEL . $value . self::END_LEFT_LABEL . $tag . self::END_RIGHT_LABEL . $enter;
             }
         }
-        return $tables . '<' . $topTag . (!empty($attributeStr) ? $attributeStr : null) . '>' . $enter . $xmlNodeContent . $tables . '</' . $topTag . '>' . $enter;
+        return empty($topTag) ? $xmlNodeContent : $tables . self::START_LEFT_LABEL . $topTag . (!empty($attributeStr) ? $attributeStr : null) . self::START_RIGHT_LABEL . $enter . $xmlNodeContent . $tables . self::END_LEFT_LABEL . $topTag . self::END_RIGHT_LABEL . $enter;
     }
 }
