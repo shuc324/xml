@@ -18,6 +18,8 @@ class XmlIO
 
     const SPACE_STR = ' ';
 
+    const QUOTE_STR = '"';
+
     const ENCODING = 'utf-8';
 
     const TYPE_ARRAY = 'array';
@@ -81,10 +83,10 @@ class XmlIO
     private function nodeContent($array, $topTag, $level = self::ZERO)
     {
         $xmlNodeContent = self::EMPTY_STR; $enter = self::ENTER; $table = self::TABLE; $attributeStr = self::EMPTY_STR;
-        $tables = $level > 0 ? implode(self::EMPTY_STR, array_fill(self::ZERO, $level, $table)) : self::EMPTY_STR;
+        $tables = $level > self::ZERO ? implode(self::EMPTY_STR, array_fill(self::ZERO, $level, $table)) : self::EMPTY_STR;
         if (array_key_exists('@attributes', $array)) {
             foreach ($array['@attributes'] as $name => $value) {
-                $attributeStr .= $name . self::EQUAL_STR . '"' . $value . '"' . self::SPACE_STR;
+                $attributeStr .= $name . self::EQUAL_STR . self::QUOTE_STR . $value . self::QUOTE_STR . self::SPACE_STR;
             }
             $attributeStr = self::SPACE_STR . rtrim($attributeStr);
             unset($array['@attributes']);
